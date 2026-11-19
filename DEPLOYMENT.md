@@ -17,6 +17,71 @@ Khác với máy chủ trong LAN ở chỗ **VPS nhìn thấy IP public của đ
 5. Đổi `JWT_SECRET`, `ADMIN_PASSWORD`, `POSTGRES_PASSWORD` **trước khi seed**.
 6. Làm HTTPS theo mục 5. Sau đó kiểm tra: Wi-Fi công ty → điểm danh được; 4G → 403.
 
+## 0c. Chọn mô hình triển khai
+
+| Mô hình | Chi phí | Phù hợp | Lưu ý |
+|---|---:|---|---|
+| Máy local + IP LAN | Miễn phí | Test trong cùng mạng | Điện thoại phải truy cập được IP máy chủ; không dùng được khi máy tắt hoặc khác mạng |
+| Máy local + Cloudflare Named Tunnel | Miễn phí (ngoài chi phí domain nếu có) | Nhóm nhỏ, public nhanh | Máy local phải luôn bật; dùng domain cố định và `nginx.tunnel.conf` |
+| Oracle Cloud Always Free | Có thể miễn phí | Chạy liên tục không phụ thuộc máy cá nhân | Phải tự quản trị VM, firewall, backup; tài nguyên/khả dụng phụ thuộc chính sách nhà cung cấp |
+| VPS + domain + HTTPS | Có phí VPS | Production ổn định | Có IP public, backup và monitoring; đây là mô hình khuyến nghị cho hệ thống quan trọng |
+| Cloudflare Quick Tunnel | Miễn phí | Demo ngắn hạn | URL ngẫu nhiên/thay đổi, không dùng cho QR production |
+
+### Test trong cùng Wi-Fi bằng IP LAN
+
+Nếu chỉ cần thử nhanh, không để `FRONTEND_URL` là `localhost` vì `localhost` trên điện thoại
+trỏ tới chính điện thoại. Lấy IP LAN của máy chạy Docker (ví dụ `192.168.1.100`) và dùng:
+
+```ini
+FRONTEND_URL=http://192.168.1.100
+CORS_ORIGINS=http://192.168.1.100
+```
+
+Điện thoại và máy chủ phải ở cùng mạng, firewall phải cho phép HTTP, và thiết bị Wi-Fi không
+được bật AP/client isolation. Đây chỉ là mô hình test nội bộ; không dùng HTTP/IP LAN để public
+Internet.
+
+### Public miễn phí bằng Cloudflare Named Tunnel
+
+Cloudflare Tunnel phù hợp khi máy local không có IP public hoặc không muốn mở port router.
+Tạo **Named Tunnel** trong Cloudflare Zero Trust, tạo Public Hostname (ví dụ
+`chamcong.example.com`) trỏ tới `http://nginx:80`, sau đó đặt token vào `.env`:
+
+```ini
+FRONTEND_URL=https://chamcong.example.com
+CORS_ORIGINS=https://chamcong.example.com
+PUBLIC_IP=
+CLOUDFLARE_TUNNEL_TOKEN=<token-cua-named-tunnel>
+```
+
+Dùng cấu hình Nginx dành riêng cho tunnel và khởi động:
+
+```bash
+cp nginx/nginx.conf nginx/nginx.conf.backup
+cp nginx/nginx.tunnel.conf nginx/nginx.conf
+docker compose --profile tunnel up -d --build
+docker compose logs -f cloudflared
+```
+
+Chỉ tiếp tục khi log báo tunnel đã đăng ký kết nối. QR phải chứa domain HTTPS cố định, không
+phải `localhost`, IP LAN hoặc URL `trycloudflare.com` tạm thời. Máy chạy Docker phải luôn bật;
+nếu máy ngủ, tắt hoặc mất mạng thì ứng dụng và QR sẽ không truy cập được.
+
+Cloudflare Tunnel chỉ public ứng dụng, không thay thế allow-list Wi-Fi. Vẫn phải lấy IP public
+của Wi-Fi công ty bằng điện thoại tại `https://api.ipify.org` và thêm IP đó vào
+`ALLOWED_NETWORKS`. Kiểm tra cả Wi-Fi công ty và 4G sau khi cấu hình.
+
+### Oracle Always Free hoặc VPS
+
+Với Oracle Always Free, VPS giá rẻ hoặc nhà cung cấp khác, cài Docker trên Ubuntu rồi làm theo
+các mục 1–8 của tài liệu này. Trỏ DNS về VPS, mở TCP 80/443, dùng domain HTTPS và không expose
+các port PostgreSQL, backend hoặc frontend ra Internet. Đây là lựa chọn phù hợp hơn máy local
+nếu cần hệ thống chạy liên tục.
+
+Không nên dùng các nền tảng free có cơ chế sleep cho điểm danh hằng ngày nếu chưa kiểm tra
+persistent database, giới hạn request, IP proxy và chính sách lưu trữ. Luôn có backup PostgreSQL
+ở nơi khác trước khi dùng production.
+
 ## 1. Chuẩn bị hạ tầng
 | Mục | Yêu cầu |
 |---|---|

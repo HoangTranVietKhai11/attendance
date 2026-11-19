@@ -237,6 +237,14 @@ Access the app at `http://localhost` (or `https://` with certs).
 
 See `nginx/nginx.conf`. The HTTP server proxies `/api/` to backend and `/` to frontend (SPA fallback). For production, obtain certificates (e.g. Let's Encrypt), place them in `./nginx/certs/`, and uncomment the HTTPS server block to enforce HTTPS.
 
+### Deployment options
+
+See [`DEPLOYMENT.md`](./DEPLOYMENT.md) for the complete production guide and a comparison of
+the deployment choices. For a quick public test without a VPS, use a Cloudflare **Named
+Tunnel** with a fixed domain and `nginx/nginx.tunnel.conf`; do not use `localhost` or a temporary
+Quick Tunnel URL in QR codes. The computer hosting Docker must remain online, and the company
+Wi-Fi public IP must still be configured in `ALLOWED_NETWORKS`.
+
 ## Available Scripts
 
 Backend (`backend/`):
