@@ -1,0 +1,54 @@
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Dependencies and build output
+node_modules/
+**/node_modules/
+**/dist/
+**/coverage/
+.next/
+.vite/
+
+# Local databases, uploads and generated files
+*.sqlite
+*.sqlite3
+*.db
+uploads/
+
+# Personal data and credentials
+*.xlsx
+*.xls
+*.csv
+*.pem
+*.ppk
+*.key
+id_*
+known_hosts*
+
+# Logs, temporary bundles and OS files
+*.log
+*.tgz
+.DS_Store
+Thumbs.db
+
+# Local notes and generated diagnostics
+.clinerules/
+scripts/smoke-e2e.mjs
+**/*tsc*.txt
+**/backend_tsc.txt
+**/tsc-out*.txt
+**/tscerr.txt
+netcheck.txt
+st.txt
+root-test.log
+st.txt
+scripts/smoke-e2e.mjs
+
+# Generated Prisma output from TypeScript source
+backend/prisma/seed.js
+backend/prisma/seed.d.ts

@@ -1,0 +1,2 @@
+# Keeps ./nginx/certs/ present so the read-only bind mount in docker-compose.yml works.
+# Drop fullchain.pem / privkey.pem here and uncomment the HTTPS block in nginx/nginx.conf.

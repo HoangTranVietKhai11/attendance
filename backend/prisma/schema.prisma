@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Employee {
+  id          String     @id @default(uuid()) @map("id")
+  employeeCode String    @unique @map("employee_code")
+  fullName     String     @map("full_name")
+  department   String?    @map("department")
+  email        String?    @map("email")
+  position     String?    @map("position")
+  isActive     Boolean    @default(true) @map("is_active")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  records      AttendanceRecord[]
+
+  @@map("employees")
+}
+
+model AttendanceSession {
+  id           String          @id @default(uuid()) @map("id")
+  sessionName  String          @map("session_name")
+  sessionDate  DateTime        @map("session_date")
+  qrTokenHash  String          @unique @map("qr_token_hash")
+  qrToken      String?         @map("qr_token") // kept so HR can re-display the QR later
+  startTime    DateTime        @map("start_time")
+  endTime      DateTime        @map("end_time")
+  status       String          @default("SCHEDULED") @map("status") // SCHEDULED | ACTIVE | CLOSED
+  createdBy    String          @map("created_by")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  records      AttendanceRecord[]
+
+  @@map("attendance_sessions")
+}
+
+model AttendanceRecord {
+  id           String            @id @default(uuid()) @map("id")
+  sessionId    String            @map("session_id")
+  employeeId   String            @map("employee_id")
+  checkInTime  DateTime          @default(now()) @map("check_in_time")
+  clientIp     String            @map("client_ip")
+  createdAt    DateTime          @default(now()) @map("created_at")
+  session      AttendanceSession @relation(fields: [sessionId], references: [id])
+  employee     Employee          @relation(fields: [employeeId], references: [id])
+
+  @@unique([sessionId, employeeId])
+  @@map("attendance_records")
+}
+
+model AdminUser {
+  id           String     @id @default(uuid()) @map("id")
+  username     String     @unique
+  passwordHash String     @map("password_hash")
+  role         String     @default("HR") @map("role")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  auditLogs    AuditLog[]
+
+  @@map("admin_users")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @map("id")
+  adminId    String   @map("admin_id")
+  action     String
+  targetId   String?  @map("target_id")
+  details    String?  @map("details")
+  createdAt  DateTime @default(now()) @map("created_at")
+  admin      AdminUser @relation(fields: [adminId], references: [id])
+
+  @@map("audit_logs")
+}
+
+model AllowedNetwork {
+  id              String   @id @default(uuid()) @map("id")
+  networkName     String   @map("network_name")
+  publicIpOrCidr  String   @map("public_ip_or_cidr")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@map("allowed_networks")
+}
