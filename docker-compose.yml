@@ -29,8 +29,8 @@ services:
       BCRYPT_SALT_ROUNDS: 10
       PORT: 4000
       NODE_ENV: production
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost,http://localhost:5173,http://127.0.0.1}
+      FRONTEND_URL: ${FRONTEND_URL:-https://mondaycheck.onrender.com}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://mondaycheck.onrender.com,http://localhost,http://localhost:5173,http://127.0.0.1}
       TRUSTED_PROXY: "true"
       ALLOWED_NETWORKS: ${ALLOWED_NETWORKS:-127.0.0.1,::1,10.0.10.0/23}
       CHECKIN_RATE_LIMIT_MAX: ${CHECKIN_RATE_LIMIT_MAX:-10}

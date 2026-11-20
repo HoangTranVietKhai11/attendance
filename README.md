@@ -205,10 +205,9 @@ cp .env.example .env
 cp backend/.env.example backend/.env
 
 # 2. Edit .env with production values (strong JWT_SECRET/ADMIN_PASSWORD/DB password, real ALLOWED_NETWORKS)
-#    FRONTEND_URL is now only a FALLBACK: QR/check-in links are built from the Host the HR
-#    used to open the dashboard (LAN IP, <ip>.nip.io, Cloudflare tunnel, public domain), so
-#    they stay correct when the machine IP / domain changes. A QR pointing at http://localhost
-#    can never be opened by a phone — the session page now shows a warning in that case.
+#    FRONTEND_URL must be the FRONTEND service URL (not the backend API URL), for example
+#    https://mondaycheck.onrender.com. QR/check-in links are opened by phones in the SPA;
+#    using https://attendance-v5v6.onrender.com/checkin would return "Cannot GET /checkin".
 #    ALLOWED_NETWORKS: on Windows + Docker Desktop every LAN client is NAT'ed to the docker
 #    gateway (172.x), so add 172.16.0.0/12 for local testing only — remove it on a Linux
 #    server, where the real client IP is preserved and the Wi-Fi lock stays strict.

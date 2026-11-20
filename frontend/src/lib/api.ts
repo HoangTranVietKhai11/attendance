@@ -5,7 +5,11 @@
 // API lives on a different origin.
 // Trailing slashes are trimmed: `https://api.example.com/` + `/api/x` would otherwise
 // produce `//api/x`, which some servers reject with 404.
-const RAW_API_BASE = import.meta.env.VITE_API_BASE || '';
+const DEPLOYED_API_BASE =
+  typeof window !== 'undefined' && window.location.hostname === 'mondaycheck.onrender.com'
+    ? 'https://attendance-v5v6.onrender.com'
+    : '';
+const RAW_API_BASE = import.meta.env.VITE_API_BASE || DEPLOYED_API_BASE;
 export const API_BASE = RAW_API_BASE.replace(/\/+$/, '');
 
 export function apiUrl(path: string): string {

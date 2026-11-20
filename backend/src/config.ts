@@ -12,12 +12,15 @@ export const config = {
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean),
-  frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+  frontendUrl: process.env.FRONTEND_URL || 'https://mondaycheck.onrender.com',
   // Plain LAN IP of this server, used to render a fallback check-in link
   // (some Android scanners / DNS setups cannot open the <ip>.nip.io domain).
   publicIp: process.env.PUBLIC_IP || '',
   // Comma-separated list of origins allowed by CORS (defaults to FRONTEND_URL).
-  corsOrigins: (process.env.CORS_ORIGINS || process.env.FRONTEND_URL || 'http://localhost:5173')
+  corsOrigins: (
+    process.env.CORS_ORIGINS ||
+    `${process.env.FRONTEND_URL || 'https://mondaycheck.onrender.com'},http://localhost:5173`
+  )
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean),

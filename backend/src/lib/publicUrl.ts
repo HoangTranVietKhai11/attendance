@@ -29,26 +29,11 @@ export function isLoopbackUrl(url: string): boolean {
 /**
  * Base URL (no trailing slash) that employees' phones must open after scanning the QR.
  *
- * The Host header of the current request is used: whatever address HR opened the
- * dashboard with is reachable from the office network (LAN IP, `<ip>.nip.io`, Cloudflare
- * tunnel, public domain…) and never goes stale when the server IP/domain changes.
- *
- * `FRONTEND_URL` is only used as a fallback when the request itself comes from loopback
- * (HR debugging on the server at http://localhost) but a reachable public URL is
- * configured. Previously every QR was built from the static env value, so a stale
- * `http://localhost:5173` produced QR codes that phones could not open ("not found").
+ * The backend and frontend are separate Render services in production. Therefore the
+ * QR must always use the configured frontend URL; using the request Host would encode
+ * `attendance-v5v6.onrender.com/checkin`, which is a backend route and returns 404.
  */
 export function requestBaseUrl(req: Request): string {
   const configured = (config.frontendUrl || '').trim().replace(/\/+$/, '');
-  const host = req.get('host');
-
-  if (!host) return configured || 'http://localhost';
-
-  if (isLoopbackHost(host) && configured && !isLoopbackUrl(configured)) {
-    return configured;
-  }
-
-  const proto =
-    (req.get('x-forwarded-proto') || '').split(',')[0].trim() || req.protocol || 'http';
-  return `${proto}://${host}`;
+  return configured || 'http://localhost:5173';
 }
