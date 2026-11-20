@@ -3,6 +3,7 @@
 - Xong E2E (local): login → employees (import Excel 253 NV) → session → start → QR → check-in (chặn ngoài LAN 403, trùng 400) → records → export xlsx → close.
 - Xong hạ tầng: SPA fallback, `/api` same-origin, trust proxy 1, QR token lưu DB + link dự phòng IP, allow-list = `.env` ∪ bảng `allowed_networks`, trang Wi-Fi, IPv6 CIDR.
 - Xong deploy VPS (19/11): SSH key `mondaycheck_vps` OK (`ssh mondaycheck`, dev + sudo + docker), Ubuntu 24.04 LXC/Proxmox, Docker 29.1.3 + Compose 2.40.3, code ở `~/mondaycheck`, 4 container healthy, `prisma db push` + seed admin `hr`.
+- Fix QR "not found" (20/11): link QR giờ lấy theo `Host` request (LAN IP / nip.io / tunnel / domain) thay vì `FRONTEND_URL` tĩnh; `/api/sessions/:id/links` trả luôn `qrDataUrl` (+ `reachable`), `/qr` có `Cache-Control: no-store` → hết cảnh quét phải QR token cũ; trang phiên cảnh báo khi link là localhost; lỗi verify đổi thành thông báo tiếng Việt rõ ràng.
 - Xong smoke test trên VPS: **16/16 PASS** — login, me, import 253 NV, tạo/mở phiên, rotate QR, check-in 200, trùng 400, records=1, close → QR hết hiệu lực, check-in 403 đúng thông báo Wi-Fi, export xlsx 200 (cần `?sessionId=`).
 - Tiếp theo: cần **token Cloudflare Named Tunnel + domain** (repo đã có `--profile tunnel` + `nginx.tunnel.conf`) hoặc nhà cung cấp NAT 80/443 → 192.168.100.6; sau đó đặt `FRONTEND_URL`/`CORS_ORIGINS` = domain HTTPS.
 - Cần xác nhận: IP public Wi-Fi công ty thật (đang tạm 14.226.248.148/32), `WIFI_NAME`/`WIFI_PASSWORD`, mật khẩu sudo của `dev` (chỉ cần cho timezone/ufw/certbot).

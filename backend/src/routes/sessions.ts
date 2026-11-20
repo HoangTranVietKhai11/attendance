@@ -1,12 +1,24 @@
-import { Router } from 'express';
+import { Router, type Request } from 'express';
 import { z } from 'zod';
 import QRCode from 'qrcode';
 import { prisma } from '../lib/prisma';
 import { authenticate } from '../middleware/auth';
 import { config } from '../config';
 import { makeQrToken, hashToken } from '../lib/qr';
+import { requestBaseUrl, isLoopbackUrl } from '../lib/publicUrl';
 
 const router = Router();
+
+/** Check-in URL encoded into a session's QR code. */
+function checkinUrl(req: Request, token: string): string {
+  return `${requestBaseUrl(req)}/checkin?t=${token}`;
+}
+
+/** QR image (data URL) so the UI never has to read a cached image of an old token. */
+async function qrImage(url: string): Promise<string> {
+  // Default quiet zone (4 modules) keeps the code scannable from a screen/TV.
+  return QRCode.toDataURL(url, { width: 480 });
+}
 
 const sessionSchema = z.object({
   sessionName: z.string().min(1),
@@ -46,10 +58,10 @@ router.post('/', authenticate, async (req, res) => {
       createdBy: req.admin!.id,
     },
   });
-  const qrUrl = `${config.frontendUrl}/checkin?t=${token}`;
+  const qrUrl = checkinUrl(req, token);
   res.status(201).json({
     success: true,
-    data: { ...session, qrToken: token, qrUrl },
+    data: { ...session, qrToken: token, qrUrl, qrDataUrl: await qrImage(qrUrl) },
   });
 });
 
@@ -67,7 +79,11 @@ router.get('/verify', async (req, res) => {
     select: { id: true, sessionName: true, sessionDate: true, startTime: true, endTime: true, status: true },
   });
   if (!session) {
-    res.status(404).json({ success: false, error: 'Invalid or expired QR code' });
+    res.status(404).json({
+      success: false,
+      error:
+        'Mã QR không hợp lệ hoặc đã được thay bằng mã mới. Hãy quét lại mã QR đang hiển thị trên màn hình.',
+    });
     return;
   }
   const now = new Date();
@@ -99,6 +115,7 @@ router.get('/:id', authenticate, async (req, res) => {
 
 // QR code image for a session. HR only — the token is taken from the stored session,
 // so the QR can be re-opened any time from any device (an explicit `t` is still accepted).
+// `Cache-Control: no-store` keeps a rotated token from being masked by a cached image.
 router.get('/:id/qr', authenticate, async (req, res) => {
   const { id } = req.params;
   const { t } = req.query as { t?: string };
@@ -116,12 +133,15 @@ router.get('/:id/qr', authenticate, async (req, res) => {
     res.status(403).json({ success: false, error: 'Invalid token for this session' });
     return;
   }
-  const url = `${config.frontendUrl}/checkin?t=${token}`;
+  const url = checkinUrl(req, token);
   const png = await QRCode.toDataURL(url);
+  res.set('Cache-Control', 'no-store, max-age=0');
   res.type('png').send(Buffer.from(png.split(',')[1], 'base64'));
 });
 
-// Check-in links (canonical domain + plain-IP fallback) for the session's QR token.
+// Check-in links (canonical domain + plain-IP fallback) plus the rendered QR image for
+// the session's token. One request is enough to display the QR, and the base64 image
+// cannot be stale (no browser caching of the image endpoint involved).
 router.get('/:id/links', authenticate, async (req, res) => {
   const session = await prisma.attendanceSession.findUnique({ where: { id: req.params.id } });
   if (!session) {
@@ -130,15 +150,22 @@ router.get('/:id/links', authenticate, async (req, res) => {
   }
   const token = session.qrToken;
   if (!token) {
-    res.json({ success: true, data: { token: null, url: null, fallbackUrl: null } });
+    res.json({
+      success: true,
+      data: { token: null, url: null, fallbackUrl: null, qrDataUrl: null, reachable: false },
+    });
     return;
   }
+  const url = checkinUrl(req, token);
   res.json({
     success: true,
     data: {
       token,
-      url: `${config.frontendUrl}/checkin?t=${token}`,
+      url,
       fallbackUrl: config.publicIp ? `http://${config.publicIp}/checkin?t=${token}` : null,
+      qrDataUrl: await qrImage(url),
+      // false → the link points at localhost, a phone will report "not found".
+      reachable: !isLoopbackUrl(url),
     },
   });
 });
@@ -177,9 +204,10 @@ router.post('/:id/rotate-qr', authenticate, async (req, res) => {
     where: { id },
     data: { qrTokenHash: hash, qrToken: token },
   });
+  const qrUrl = checkinUrl(req, token);
   res.json({
     success: true,
-    data: { token, qrUrl: `${config.frontendUrl}/checkin?t=${token}` },
+    data: { token, qrUrl, qrDataUrl: await qrImage(qrUrl), reachable: !isLoopbackUrl(qrUrl) },
   });
 });
 

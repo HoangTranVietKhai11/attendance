@@ -205,11 +205,10 @@ cp .env.example .env
 cp backend/.env.example backend/.env
 
 # 2. Edit .env with production values (strong JWT_SECRET/ADMIN_PASSWORD/DB password, real ALLOWED_NETWORKS)
-#    FRONTEND_URL must be the address employees can reach (e.g. http://192.168.1.50 or the
-#    public domain) — QR/check-in links are generated from it, so never use "localhost"
-#    if phones scan the QR code. Tip: use the wildcard DNS form http://<lan-ip>.nip.io
-#    (or .sslip.io) so Android/iOS QR scanners show an "Open link" button instead of
-#    only "Copy" (scanners often refuse bare private-IP URLs).
+#    FRONTEND_URL is now only a FALLBACK: QR/check-in links are built from the Host the HR
+#    used to open the dashboard (LAN IP, <ip>.nip.io, Cloudflare tunnel, public domain), so
+#    they stay correct when the machine IP / domain changes. A QR pointing at http://localhost
+#    can never be opened by a phone — the session page now shows a warning in that case.
 #    ALLOWED_NETWORKS: on Windows + Docker Desktop every LAN client is NAT'ed to the docker
 #    gateway (172.x), so add 172.16.0.0/12 for local testing only — remove it on a Linux
 #    server, where the real client IP is preserved and the Wi-Fi lock stays strict.

@@ -1,7 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { apiJson, apiRequest } from '../lib/api';
-import { RefreshCw, Copy, CheckCircle2, QrCode } from 'lucide-react';
+import { apiJson } from '../lib/api';
+import { RefreshCw, Copy, CheckCircle2, QrCode, AlertTriangle } from 'lucide-react';
+
+type SessionLinks = {
+  token: string;
+  url: string;
+  fallbackUrl: string | null;
+  qrDataUrl: string | null;
+  reachable?: boolean;
+};
 
 export default function SessionDetail() {
   const { id } = useParams();
@@ -9,7 +17,7 @@ export default function SessionDetail() {
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [qrSrc, setQrSrc] = useState<string | null>(null);
-  const [links, setLinks] = useState<{ token: string; url: string; fallbackUrl: string | null } | null>(null);
+  const [links, setLinks] = useState<SessionLinks | null>(null);
   const [copiedKey, setCopiedKey] = useState('');
   const [rotating, setRotating] = useState(false);
 
@@ -22,31 +30,16 @@ export default function SessionDetail() {
     setLoading(false);
   }, [id]);
 
-  // Load the check-in links (token comes from the server, so the QR is available on
-  // every device — not only the browser that created the session).
+  // One request returns the check-in link, the IP fallback link and the QR image itself
+  // (base64). Rendering the returned image avoids the browser showing a cached QR of an
+  // old token — scanning that stale code used to fail with "not found".
   const loadLinks = useCallback(async () => {
-    const res = await apiJson<{ token: string | null; url: string | null; fallbackUrl: string | null }>(
-      `/api/sessions/${id}/links`
-    );
+    const res = await apiJson<SessionLinks>(`/api/sessions/${id}/links`);
     if (res.success && res.data?.token && res.data.url) {
-      setLinks({ token: res.data.token, url: res.data.url, fallbackUrl: res.data.fallbackUrl });
+      setLinks(res.data);
+      setQrSrc(res.data.qrDataUrl ?? null);
     } else {
       setLinks(null);
-    }
-  }, [id]);
-
-  // Render the QR as an object URL (the image endpoint requires the bearer token).
-  const loadQr = useCallback(async () => {
-    try {
-      const res = await apiRequest(`/api/sessions/${id}/qr`);
-      if (!res.ok) {
-        setQrSrc(null);
-        return;
-      }
-      const blob = await res.blob();
-      setQrSrc(URL.createObjectURL(blob));
-    } catch {
-      // Offline / blocked — placeholder with the "generate QR" button is shown.
       setQrSrc(null);
     }
   }, [id]);
@@ -54,8 +47,7 @@ export default function SessionDetail() {
   useEffect(() => {
     load();
     loadLinks();
-    loadQr();
-  }, [load, loadLinks, loadQr]);
+  }, [load, loadLinks]);
 
   function copyText(key: string, value: string) {
     navigator.clipboard.writeText(value);
@@ -69,12 +61,15 @@ export default function SessionDetail() {
     load();
   }
 
-  // Issue (or revoke + re-issue) the QR token of this session.
+  // Issue (or revoke + re-issue) the QR token of this session and show the new image.
   async function createQr() {
     setRotating(true);
-    await apiJson(`/api/sessions/${id}/rotate-qr`, { method: 'POST' });
+    const res = await apiJson<{ qrDataUrl: string }>(`/api/sessions/${id}/rotate-qr`, {
+      method: 'POST',
+    });
     setRotating(false);
-    await Promise.all([loadLinks(), loadQr()]);
+    if (res.success && res.data?.qrDataUrl) setQrSrc(res.data.qrDataUrl);
+    await loadLinks();
   }
 
 
@@ -138,6 +133,16 @@ export default function SessionDetail() {
                     <button onClick={() => copyText('fallback', links.fallbackUrl!)} className="btn-ghost !px-2 !py-1 shrink-0" title="Sao chép link IP">
                       {copiedKey === 'fallback' ? <CheckCircle2 size={14} className="text-green-600" /> : <Copy size={14} />}
                     </button>
+                  </div>
+                )}
+                {links.reachable === false && (
+                  <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-amber-800">
+                    <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                    <span>
+                      Link QR đang trỏ tới <b>localhost</b> nên điện thoại quét sẽ báo không tìm thấy.
+                      Hãy mở web bằng IP LAN (ví dụ <b>http://10.0.10.76</b>) hoặc tên miền rồi bấm
+                      “Tạo lại mã QR mới”.
+                    </span>
                   </div>
                 )}
               </div>
