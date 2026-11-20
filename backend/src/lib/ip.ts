@@ -5,6 +5,7 @@
  * Never trust client-submitted headers (X-Forwarded-For etc.) unless the proxy is trusted.
  */
 import net from 'node:net';
+import { config } from '../config';
 
 type IpFamily = 'ipv4' | 'ipv6';
 
@@ -39,8 +40,17 @@ export function isIpAllowed(clientIp: string, allowed: string[]): boolean {
 
 /** Extract the real client public IP from an Express request. */
 export function clientIp(req: import('express').Request): string {
-  // Express trust-proxy must be enabled for req.ip to reflect X-Forwarded-For.
-  const forwarded = req.ip || req.socket.remoteAddress || '';
+  // Render and other reverse proxies may expose the client address through one of
+  // these headers. Only read them when TRUSTED_PROXY is explicitly enabled; otherwise
+  // a direct client could forge an allow-listed IP and bypass the Wi-Fi restriction.
+  const forwardedFor = req.headers['x-forwarded-for'];
+  const forwarded = config.trustedProxy
+    ? (typeof forwardedFor === 'string' ? forwardedFor.split(',')[0].trim() : '')
+      || req.headers['x-real-ip']
+      || req.headers['cf-connecting-ip']
+      || req.ip
+    : req.socket.remoteAddress || req.ip;
+  const value = Array.isArray(forwarded) ? forwarded[0] : forwarded || '';
   // Handle ::ffff:127.0.0.1 IPv4-mapped IPv6
-  return forwarded.replace(/^::ffff:/, '');
+  return value.trim().replace(/^::ffff:/, '');
 }
