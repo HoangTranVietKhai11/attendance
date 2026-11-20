@@ -41,7 +41,10 @@ router.post('/checkin', checkinRateLimit, async (req, res) => {
   const ip = clientIp(req);
   const allowedNetworks = await effectiveAllowedNetworks();
   if (!isIpAllowed(ip, allowedNetworks)) {
-    res.status(403).json({ success: false, error: NETWORK_ERROR });
+    res.status(403).json({
+      success: false,
+      error: `${NETWORK_ERROR} (IP máy đang dùng: ${ip})`,
+    });
     return;
   }
 
@@ -67,31 +70,16 @@ router.post('/checkin', checkinRateLimit, async (req, res) => {
     return;
   }
 
-  // 4. Validate employee against database.
-  // Employee codes are stored without leading zeros ("5186"), but people often type
-  // "05186" — try the raw code plus normalised variants before giving up.
+  // 4. Accept the employee's submitted identity without checking the import list.
+  // The employee table is only used as a local record/index: first-time codes are
+  // created automatically, so attendance is not blocked while HR is still importing data.
   const rawCode = employeeCode.trim();
-  const stripped = rawCode.replace(/^0+(?=\d)/, '');
-  const variants = Array.from(
-    new Set([rawCode, stripped, stripped.padStart(4, '0'), stripped.padStart(5, '0')])
-  );
-  const employee = await prisma.employee.findFirst({
-    where: { employeeCode: { in: variants } },
+  const rawName = fullName.trim();
+  const employee = await prisma.employee.upsert({
+    where: { employeeCode: rawCode },
+    update: { fullName: rawName, isActive: true },
+    create: { employeeCode: rawCode, fullName: rawName, isActive: true },
   });
-  if (!employee) {
-    res.status(400).json({
-      success: false,
-      error: `Employee code "${rawCode}" was not found. Please check the code and try again.`,
-    });
-    return;
-  }
-  if (!employee.isActive) {
-    res.status(400).json({
-      success: false,
-      error: 'This employee is inactive and cannot check in.',
-    });
-    return;
-  }
 
   // 5. Duplicate prevention at DB level (atomic insert inside transaction)
   try {
