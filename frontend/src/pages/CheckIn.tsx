@@ -70,7 +70,7 @@ export default function CheckIn() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!token) return;
+    if (!token || !session?.checkInAllowed || net?.allowed !== true) return;
     setSubmitting(true);
     setMessage('');
     const res = await apiJson('/api/attendance/checkin', {
@@ -111,6 +111,8 @@ export default function CheckIn() {
   }
 
   const allowed = session.checkInAllowed;
+  const networkAllowed = net?.allowed === true;
+  const canSubmit = allowed && networkAllowed;
   const fmtTime = (iso: string) =>
     new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
   const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('vi-VN');
@@ -203,7 +205,7 @@ export default function CheckIn() {
                   onChange={(e) => setCode(e.target.value)}
                   placeholder="Nhập Mã NV"
                   required
-                  disabled={!allowed}
+                  disabled={!canSubmit}
                 />
               </div>
               <div>
@@ -214,14 +216,20 @@ export default function CheckIn() {
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Nhập họ tên đầy đủ"
                   required
-                  disabled={!allowed}
+                  disabled={!canSubmit}
                 />
               </div>
               <button
                 className="btn-primary w-full"
-                disabled={submitting || !allowed}
+                disabled={submitting || !canSubmit}
               >
-                {submitting ? 'Đang gửi…' : allowed ? 'Gửi điểm danh' : 'Phiên chưa mở'}
+                {submitting
+                  ? 'Đang gửi…'
+                  : !allowed
+                  ? 'Phiên chưa mở'
+                  : networkAllowed
+                  ? 'Gửi điểm danh'
+                  : 'Chưa đúng Wi-Fi phòng đào tạo'}
               </button>
             </form>
             <p className="mt-4 text-xs text-gray-500 text-center">
