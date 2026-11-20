@@ -3,7 +3,10 @@
 // Empty by default so requests stay same-origin (`/api/...`), which works through the
 // Nginx reverse proxy (port 80) and the Vite dev proxy. Only set VITE_API_BASE when the
 // API lives on a different origin.
-export const API_BASE = import.meta.env.VITE_API_BASE || '';
+// Trailing slashes are trimmed: `https://api.example.com/` + `/api/x` would otherwise
+// produce `//api/x`, which some servers reject with 404.
+const RAW_API_BASE = import.meta.env.VITE_API_BASE || '';
+export const API_BASE = RAW_API_BASE.replace(/\/+$/, '');
 
 export function apiUrl(path: string): string {
   return path.startsWith('http') ? path : `${API_BASE}${path}`;

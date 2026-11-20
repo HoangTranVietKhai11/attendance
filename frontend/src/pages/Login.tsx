@@ -51,7 +51,7 @@ export default function Login() {
               className="input"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="hr"
+              placeholder="Tài khoản quản trị"
               required
             />
           </div>
@@ -75,7 +75,7 @@ export default function Login() {
           </button>
         </form>
         <p className="mt-6 text-xs text-gray-500 text-center">
-          demo: hr / Admin@123
+          Dùng tài khoản quản trị do bộ phận HR/IT cấp. Quên mật khẩu, liên hệ quản trị viên hệ thống.
         </p>
       </div>
     </div>
