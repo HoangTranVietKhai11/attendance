@@ -9,6 +9,11 @@ import { config } from '../config';
  */
 export async function effectiveAllowedNetworks(): Promise<string[]> {
   const envList = [...config.allowedNetworks];
+  // In production, the Render environment variable is the single source of truth.
+  // Do not let old networks left in the local/admin database silently reopen access.
+  if (config.nodeEnv === 'production') {
+    return envList.filter((entry) => !['127.0.0.1', '127.0.0.1/32', '::1', '::1/128'].includes(entry));
+  }
   try {
     const dbNetworks = await prisma.allowedNetwork.findMany({
       where: { isActive: true },
@@ -20,9 +25,6 @@ export async function effectiveAllowedNetworks(): Promise<string[]> {
     // Render/VPS production must never allow loopback. Seed data contains loopback
     // entries for local smoke tests; keeping them active would allow every request
     // that arrives through a proxy as ::1 when TRUSTED_PROXY is misconfigured.
-    if (config.nodeEnv === 'production') {
-      return combined.filter((entry) => !['127.0.0.1', '127.0.0.1/32', '::1', '::1/128'].includes(entry));
-    }
     return combined;
   } catch {
     // DB unavailable → fall back to env so the check-in path keeps working.
