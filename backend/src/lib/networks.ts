@@ -15,7 +15,15 @@ export async function effectiveAllowedNetworks(): Promise<string[]> {
       select: { publicIpOrCidr: true },
     });
     const dbList = dbNetworks.map((n) => n.publicIpOrCidr.trim()).filter(Boolean);
-    return Array.from(new Set([...envList, ...dbList]));
+    const combined = Array.from(new Set([...envList, ...dbList]));
+
+    // Render/VPS production must never allow loopback. Seed data contains loopback
+    // entries for local smoke tests; keeping them active would allow every request
+    // that arrives through a proxy as ::1 when TRUSTED_PROXY is misconfigured.
+    if (config.nodeEnv === 'production') {
+      return combined.filter((entry) => !['127.0.0.1', '127.0.0.1/32', '::1', '::1/128'].includes(entry));
+    }
+    return combined;
   } catch {
     // DB unavailable → fall back to env so the check-in path keeps working.
     return envList;
