@@ -55,6 +55,17 @@ app.get('/api/config', (_req, res) => {
   });
 });
 
+// Safety fallback for QR links opened against the backend port directly. The normal
+// path is nginx -> frontend, but this prevents a confusing "Cannot GET /checkin" if
+// an old QR or a manually copied backend URL is scanned.
+app.get('/checkin', (req, res) => {
+  const query = new URLSearchParams();
+  const token = typeof req.query.t === 'string' ? req.query.t : '';
+  if (token) query.set('t', token);
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+  res.redirect(302, `${config.frontendUrl.replace(/\/+$/, '')}/checkin${suffix}`);
+});
+
 
 app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);
