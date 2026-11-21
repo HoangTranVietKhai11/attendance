@@ -17,6 +17,12 @@ Modern, lightweight, responsive web application for internal employee attendance
 | Security | helmet, cors, trusted proxy |
 | Deployment | Docker / Docker Compose, Nginx reverse proxy, HTTPS |
 
+The repository also contains a scheduled GitHub Actions workflow that requests the
+Render backend `/health` endpoint every 10 minutes to reduce cold starts on Render
+free services. It is a best-effort keep-awake mechanism; GitHub may delay scheduled
+jobs and Render may still sleep or restart the service. The workflow can be tested
+manually from **Actions → Keep Render backend awake → Run workflow**.
+
 ## Project Structure
 
 ```
